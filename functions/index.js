@@ -18,7 +18,48 @@ exports.addMessage = functions.https.onRequest(async (req, res) => {
     res.redirect(303, snapshot.ref.toString());
   });
 
+  // Listens for new messages added to /messages/:pushId/original and creates an
+// uppercase version of the message to /messages/:pushId/uppercase
+exports.makeUppercase = functions.database.ref('/messages/{pushId}/original')
+.onCreate((snapshot, context) => {
+  // Grab the current value of what was written to the Realtime Database.
+  const original = snapshot.val();
+  console.log('Uppercasing', context.params.pushId, original);
+  const uppercase = original.toUpperCase();
+  // You must return a Promise when performing asynchronous tasks inside a Functions such as
+  // writing to the Firebase Realtime Database.
+  // Setting an "uppercase" sibling in the Realtime Database returns a Promise.
+  return snapshot.ref.parent.child('uppercase').set(uppercase);
+});
+
+exports.updateUserhasVoted = functions.https.onRequest(async (req, res) =>{
+    const collection = req.query.collection;
+    const sinNum = req.query.sinNum;
+    var db = admin.firestore();
+    var user = db.collection("Elections").doc("C0cp8CIAXqIyTUPAAhHf").collection(collection).get(`sin:${sinNum}`);
+    if(user){
+        if(!user.voted){
+            user.set({voted: true}, { merge: true });
+            res.send("voting has been added to a null voter");
+        } else {
+            if(user.voted === false){
+                user.voted = true;
+                res.send("voting has been updated from a not voted yet");
+            }
+        }
+    }
+    res.send("User has voted");
+});
+
 
 // The Firebase Admin SDK to access the Firebase Realtime Database.
 const admin = require('firebase-admin');
 admin.initializeApp();
+
+//urls for each function
+// +  functions[updateUserhasVoted(us-central1)]: Successful create operation.
+// Function URL (updateUserhasVoted): https://us-central1-blockvote-73bb2.cloudfunctions.net/updateUserhasVoted
+// +  functions[helloWorld(us-central1)]: Successful create operation.
+// Function URL (helloWorld): https://us-central1-blockvote-73bb2.cloudfunctions.net/helloWorld
+// +  functions[addMessage(us-central1)]: Successful create operation.
+// Function URL (addMessage): https://us-central1-blockvote-73bb2.cloudfunctions.net/addMessage
